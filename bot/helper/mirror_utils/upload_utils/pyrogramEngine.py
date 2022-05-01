@@ -2,7 +2,6 @@ from logging import getLogger, ERROR
 from os import remove as osremove, walk, path as ospath, rename as osrename
 from time import time, sleep
 from pyrogram.errors import FloodWait, RPCError
-from pyrogram import enums
 from PIL import Image
 from threading import RLock
 
@@ -40,22 +39,19 @@ class TgUploader:
         size = get_readable_file_size(get_path_size(path))
         for dirpath, subdir, files in sorted(walk(path)):
             for file_ in sorted(files):
-                if self.__is_cancelled:
-                    return
-                if file_.endswith(tuple(EXTENTION_FILTER)):
-                    continue
-                up_path = ospath.join(dirpath, file_)
-                fsize = ospath.getsize(up_path)
-                if fsize == 0:
-                    LOGGER.error(f"{up_path} size is zero, telegram don't upload zero size files")
-                    self.__corrupted += 1
-                    continue
-                self.__upload_file(up_path, file_, dirpath)
-                if self.__is_cancelled:
-                    return
-                self.__msgs_dict[file_] = self.__sent_msg.id
-                self._last_uploaded = 0
-                sleep(1)
+                if not file_.lower().endswith(tuple(EXTENTION_FILTER)):
+                    up_path = ospath.join(dirpath, file_)
+                    fsize = ospath.getsize(up_path)
+                    if fsize == 0:
+                        LOGGER.error(f"{up_path} size is zero, telegram don't upload zero size files")
+                        self.__corrupted += 1
+                        continue
+                    self.__upload_file(up_path, file_, dirpath)
+                    if self.__is_cancelled:
+                        return
+                    self.__msgs_dict[file_] = self.__sent_msg.id
+                    self._last_uploaded = 0
+                    sleep(1)
         if len(self.__msgs_dict) <= self.__corrupted:
             return self.__listener.onUploadError('Files Corrupted. Check logs')
         LOGGER.info(f"Leech Completed: {self.name}")
@@ -96,7 +92,6 @@ class TgUploader:
                     self.__sent_msg = self.__sent_msg.reply_video(video=up_path,
                                                               quote=True,
                                                               caption=cap_mono,
-                                                              parse_mode=enums.ParseMode.HTML,
                                                               duration=duration,
                                                               width=width,
                                                               height=height,
@@ -109,7 +104,6 @@ class TgUploader:
                     self.__sent_msg = self.__sent_msg.reply_audio(audio=up_path,
                                                               quote=True,
                                                               caption=cap_mono,
-                                                              parse_mode=enums.ParseMode.HTML,
                                                               duration=duration,
                                                               performer=artist,
                                                               title=title,
@@ -120,7 +114,6 @@ class TgUploader:
                     self.__sent_msg = self.__sent_msg.reply_photo(photo=up_path,
                                                               quote=True,
                                                               caption=cap_mono,
-                                                              parse_mode=enums.ParseMode.HTML,
                                                               disable_notification=True,
                                                               progress=self.__upload_progress)
                 else:
@@ -136,7 +129,6 @@ class TgUploader:
                                                              quote=True,
                                                              thumb=thumb,
                                                              caption=cap_mono,
-                                                             parse_mode=enums.ParseMode.HTML,
                                                              disable_notification=True,
                                                              progress=self.__upload_progress)
         except FloodWait as f:
